@@ -107,5 +107,72 @@ AND start_station_id IS NOT NULL
 
 --update table with E&R station id--
 UPDATE `capstone-072023.bikeshare_data.combined_data`
-SET start_station_id = 23001
-WHERE start_station_id IS NULL 
+SET start_station_id = "23001"
+WHERE start_station_name = 'Elizabeth St & Randolph St'
+AND start_station_id IS NULL 
+
+-- view null start station id, non null station name updated 
+SELECT *
+FROM `capstone-072023.bikeshare_data.combined_data`
+WHERE start_station_name IS NOT NULL AND start_station_id IS NULL
+
+--find Stony Island Ave & 63rd St station id--
+SELECT start_station_id
+FROM `capstone-072023.bikeshare_data.combined_data`
+WHERE start_station_name = 'Stony Island Ave & 63rd St'
+AND start_station_id IS NOT NULL
+
+--update table with Stony Island & 63rd start station id--
+UPDATE `capstone-072023.bikeshare_data.combined_data`
+SET start_station_id = "653B"
+WHERE start_station_name = 'Stony Island Ave & 63rd St'
+AND start_station_id IS NULL
+
+--view rows will null start station name and non-null id --
+SELECT *
+FROM `capstone-072023.bikeshare_data.combined_data`
+WHERE start_station_name IS NOT NULL AND start_station_id IS NULL
+
+--delete rows that are missing start station name and start station id--
+DELETE FROM `capstone-072023.bikeshare_data.combined_data`
+WHERE start_station_name IS NULL AND start_station_id IS NULL
+
+--delete empty end_lat and end_lng rows--
+DELETE FROM `capstone-072023.bikeshare_data.combined_data`
+WHERE end_lat IS NULL OR start_station_id IS NULL
+
+--view rows will null end station name and non-null id -- 
+SELECT *
+FROM `capstone-072023.bikeshare_data.combined_data`
+WHERE end_station_name IS NOT NULL AND end_station_id IS NULL 
+
+--update 'Elizabeth St & Randolph St' end station id--
+UPDATE `capstone-072023.bikeshare_data.combined_data`
+SET end_station_id = "23001"
+WHERE end_station_name = 'Elizabeth St & Randolph St'
+AND end_station_id IS NULL 
+
+--update table with Stony Island & 63rd end station id--
+UPDATE `capstone-072023.bikeshare_data.combined_data`
+SET end_station_id = "653B"
+WHERE end_station_name = 'Stony Island Ave & 63rd St'
+AND end_station_id IS NULL
+
+--check for null end station name and non-null end station id
+SELECT *
+FROM `capstone-072023.bikeshare_data.combined_data`
+WHERE end_station_name IS NULL AND end_station_id IS NOT NULL
+
+--delete rows that are missing end station name and end station id--
+DELETE FROM `capstone-072023.bikeshare_data.combined_data`
+WHERE end_station_name IS NULL AND end_station_id IS NULL
+
+--check that start/end station name/id now have no null values
+SELECT
+COUNT(*) - COUNT(start_station_name) start_station_name,
+COUNT(*) - COUNT(start_station_id) start_station_id,
+COUNT(*) - COUNT(end_station_name) end_station_name,
+COUNT(*) - COUNT(end_station_id) end_station_id,
+FROM `capstone-072023.bikeshare_data.combined_data`
+
+--end as of 7/4 
