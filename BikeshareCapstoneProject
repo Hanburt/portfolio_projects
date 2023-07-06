@@ -167,12 +167,215 @@ WHERE end_station_name IS NULL AND end_station_id IS NOT NULL
 DELETE FROM `capstone-072023.bikeshare_data.combined_data`
 WHERE end_station_name IS NULL AND end_station_id IS NULL
 
---check that start/end station name/id now have no null values
+--check number of missing end_lat and end_lng
+SELECT 
+COUNT(*) - COUNT(end_lat) end_lat,
+COUNT(*) - COUNT(end_lng) end_lng, 
+FROM `capstone-072023.bikeshare_data.combined_data` 
+
+--see end_station_name of missing end lat/lng values
+SELECT *
+FROM `capstone-072023.bikeshare_data.combined_data` 
+WHERE end_lat IS NULL OR end_lng IS NULL
+ORDER BY end_station_name 
+
+--delete null values from end_lat and end_lng 
+DELETE FROM `capstone-072023.bikeshare_data.combined_data` 
+WHERE end_lat IS NULL OR end_lng IS NULL
+
+--check that start/end station name/id now have no null values and end_lat/end_lng have no null values
 SELECT
 COUNT(*) - COUNT(start_station_name) start_station_name,
 COUNT(*) - COUNT(start_station_id) start_station_id,
 COUNT(*) - COUNT(end_station_name) end_station_name,
 COUNT(*) - COUNT(end_station_id) end_station_id,
+COUNT(*) - COUNT(end_lat) end_lat,
+COUNT(*) - COUNT(end_lng) end_lng,
 FROM `capstone-072023.bikeshare_data.combined_data`
 
---end as of 7/4 
+--view dataset
+SELECT *
+FROM `capstone-072023.bikeshare_data.combined_data`
+LIMIT 1000 
+
+--check empty start station name and id 
+SELECT 
+COUNT (start_station_name),
+COUNT(start_station_id) 
+FROM `capstone-072023.bikeshare_data.combined_data`
+WHERE LENGTH(start_station_name) = 0 AND LENGTH(start_station_id) = 0
+
+--delete rows where start station name and id have 0 characters
+DELETE FROM `capstone-072023.bikeshare_data.combined_data`
+WHERE LENGTH(start_station_name) = 0 AND LENGTH(start_station_id) = 0
+
+--check end station name and id charater length
+SELECT
+COUNT(end_station_name),
+COUNT(end_station_id)
+FROM `capstone-072023.bikeshare_data.combined_data`
+WHERE LENGTH(end_station_name) = 0 AND LENGTH(end_station_id) = 0
+
+--delete end station name and id where character length = 0
+DELETE FROM `capstone-072023.bikeshare_data.combined_data`
+WHERE LENGTH(end_station_name) = 0 AND LENGTH(end_station_id) = 0
+
+--view dataset
+SELECT *
+FROM `capstone-072023.bikeshare_data.combined_data`
+
+--how many rows now? 
+SELECT
+COUNT(*)
+FROM `capstone-072023.bikeshare_data.combined_data` 
+
+--verify rideable_type column data
+SELECT rideable_type,
+COUNT (*)
+FROM `capstone-072023.bikeshare_data.combined_data` 
+GROUP BY rideable_type
+
+--verify member_casual column data
+SELECT member_casual,
+COUNT (*)
+FROM `capstone-072023.bikeshare_data.combined_data` 
+GROUP BY member_casual
+
+--add ride_length column 
+ALTER TABLE `capstone-072023.bikeshare_data.combined_data` 
+ADD COLUMN ride_length INTERVAL 
+
+--calculate ride length and update column
+UPDATE `capstone-072023.bikeshare_data.combined_data`
+SET ride_length = (ended_at - started_at)
+WHERE ride_length IS NULL
+
+--add ride_length_minutes column
+ALTER TABLE `capstone-072023.bikeshare_data.combined_data`
+ADD COLUMN ride_length_minutes INTEGER
+
+--calculate and add ride minutes
+UPDATE `capstone-072023.bikeshare_data.combined_data`
+set ride_length_minutes = DATE_DIFF(ended_at, started_at, minute)
+WHERE ride_length_minutes IS NULL
+
+--how many trips less than 1 mintute
+SELECT COUNT(ride_length_minutes)
+FROM `capstone-072023.bikeshare_data.combined_data`
+WHERE ride_length_minutes < 1
+
+--delete trips less than 1 minute
+DELETE FROM `capstone-072023.bikeshare_data.combined_data`
+WHERE ride_length_minutes < 1
+
+--how many trips more than 24 hours
+SELECT COUNT(ride_length_minutes)
+FROM `capstone-072023.bikeshare_data.combined_data`
+WHERE ride_length_minutes > 1440
+
+--delete trips more than 24 hours
+DELETE FROM `capstone-072023.bikeshare_data.combined_data`
+WHERE ride_length_minutes > 1440
+
+
+
+--create new final table with updated columns and new day of week and month columns
+
+
+CREATE TABLE IF NOT EXISTS bikeshare_data.cleaned_data AS(
+SELECT ride_id, rideable_type, started_at, ended_at,
+CASE EXTRACT (DAYOFWEEK
+FROM started_at)
+WHEN 1 THEN 'Sunday'
+WHEN 2 THEN 'Monday'
+WHEN 3 THEN 'Tuesday'
+WHEN 4 THEN 'Wednesday'
+WHEN 5 THEN 'Thursday'
+WHEN 6 THEN 'Friday'
+WHEN 7 THEN 'Saturday'
+END AS day_of_week,
+CASE EXTRACT(MONTH FROM started_at)
+WHEN 1 THEN 'January'
+WHEN 2 THEN 'February'
+WHEN 3 THEN 'March'
+WHEN 4 THEN 'April'
+WHEN 5 THEN 'May'
+WHEN 6 THEN 'June'
+WHEN 7 THEN 'July'
+WHEN 8 THEN 'August'
+WHEN 9 THEN 'September'
+WHEN 10 THEN 'October'
+WHEN 11 THEN 'November'
+WHEN 12 THEN 'December'
+END AS month,
+start_station_name, start_station_id, end_station_name, end_station_id, start_lat, start_lng, end_lat, end_lng,
+member_casual, ride_length, ride_length_minutes
+FROM `capstone-072023.bikeshare_data.combined_data`
+)
+
+--Now let's analyze it! 
+--number of rides total for the year by rider type
+SELECT member_casual, COUNT(ride_id) AS total_rides
+FROM `capstone-072023.bikeshare_data.cleaned_data` 
+GROUP BY member_casual
+ORDER BY total_rides
+
+--number of rides per week by rider type
+SELECT member_casual, day_of_week, COUNT(ride_id) AS rides_by_day_of_week
+FROM `capstone-072023.bikeshare_data.cleaned_data` 
+GROUP BY member_casual, day_of_week
+ORDER BY member_casual, rides_by_day_of_week DESC
+
+--number of rides per month by rider type
+SELECT member_casual, month, COUNT(ride_id) AS rides_by_month
+FROM `capstone-072023.bikeshare_data.cleaned_data` 
+GROUP BY member_casual, month
+ORDER BY member_casual, rides_by_month DESC
+
+--type of bike preferred by rider type 
+SELECT member_casual, rideable_type, COUNT(ride_id) as total_rides
+FROM `capstone-072023.bikeshare_data.cleaned_data` 
+GROUP BY member_casual, rideable_type
+ORDER BY member_casual
+
+--average trip length for all users
+SELECT AVG(ride_length_minutes) as average_trip_length
+FROM `capstone-072023.bikeshare_data.cleaned_data` 
+
+--average trip length by rider type
+SELECT member_casual, AVG(ride_length_minutes) as average_trip_length
+FROM `capstone-072023.bikeshare_data.cleaned_data` 
+GROUP BY member_casual
+
+--average trip length by day and rider type
+SELECT member_casual, day_of_week, AVG(ride_length_minutes) as average_trip_length
+FROM `capstone-072023.bikeshare_data.cleaned_data` 
+GROUP BY member_casual, day_of_week
+ORDER BY member_casual, day_of_week
+
+--average trip length by month and rider type
+SELECT member_casual, month, AVG(ride_length_minutes) as average_trip_length
+FROM `capstone-072023.bikeshare_data.cleaned_data` 
+GROUP BY member_casual, month
+ORDER BY member_casual, month
+
+--most popular start station by rider type 
+SELECT member_casual, start_station_name, COUNT(start_station_name) as trips_started
+FROM `capstone-072023.bikeshare_data.cleaned_data` 
+GROUP BY member_casual, start_station_name
+ORDER BY trips_started DESC
+
+--most popular end station by rider type 
+SELECT member_casual, end_station_name, COUNT(end_station_name) as trips_ended
+FROM `capstone-072023.bikeshare_data.cleaned_data` 
+GROUP BY member_casual, end_station_name
+ORDER BY trips_ended DESC
+
+--most popular time of day by rider type
+SELECT member_casual, EXTRACT(hour FROM started_at) as hour_of_day, COUNT(ride_id) as total_rides 
+FROM `capstone-072023.bikeshare_data.cleaned_data` 
+GROUP BY hour_of_day, member_casual
+
+--latitude and longitude for mapping
+SELECT member_casual, start_lat, start_lng, end_lat, end_lng
+FROM `capstone-072023.bikeshare_data.cleaned_data` 
