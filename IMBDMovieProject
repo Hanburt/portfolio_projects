@@ -1,3 +1,5 @@
+--In this project, I explore and analyze data on the top 250 movies on IMDb. First, I imported my data into SQLite, then I updated the budget information from two foreign films that had not been converted to USD. Then I wrote queries to pull information about budget, rating, profit, and popularity of the films. 
+
 --view dataset-- 
 SELECT * 
 FROM CopyofIMDBTop250MoviesCleanedIMDBTop250Movies;
